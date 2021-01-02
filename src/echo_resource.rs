@@ -1,0 +1,133 @@
+use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder, HttpRequest, Error, guard};
+use std::sync::Mutex;
+use actix_web::body::Body;
+use futures::future::{ready, Ready};
+use serde::Serialize;
+use serde::Deserialize;
+use super::error_base::{HttpErrorCode, ErrorResponse};
+use log::debug;
+use super::filters::{ContentTypeHeader, MethodAllowed};
+
+pub struct AppStateWithCounter {
+    pub counter: Mutex<i32>,
+}
+
+impl AppStateWithCounter {
+    pub fn new() -> Self {
+        AppStateWithCounter {
+            counter: Mutex::new(0)
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct EchoModel {
+    name: &'static str
+}
+
+#[derive(Deserialize)]
+struct Info {
+    echo_id: u32,
+    friend: String,
+}
+
+impl Responder for EchoModel {
+    type Error = Error;
+    type Future = Ready<Result<HttpResponse, Error>>;
+
+    fn respond_to(self, req: &HttpRequest) -> Self::Future {
+        let body = serde_json::to_string(&self).unwrap();
+        ready(Ok(HttpResponse::Ok()
+            .content_type("application/json")
+            .body(body)))
+    }
+}
+
+/// general echo resource
+#[get("/")]
+pub async fn echo() -> impl Responder {
+    HttpResponse::Ok().body("Hello from server!")
+}
+
+/// shared state counter example
+#[get("/counter")]
+pub async fn counter(data: web::Data<AppStateWithCounter>) -> impl Responder {
+    match data.counter.lock() {
+        Ok(mut c) => {
+            *c += 1;
+            HttpResponse::Ok().body(format!("counter = {}", c))
+        }
+        Err(_) => {
+            HttpResponse::Ok().body(format!("counter not incremented"))
+        }
+    }
+}
+
+/// model responder serialization
+#[get("/model")]
+pub async fn users(data: web::Data<AppStateWithCounter>) -> impl Responder {
+    EchoModel { name: "moe" }
+}
+
+/// path segment example
+#[get("/model/{echo_id}/{friend}")]
+async fn index(info: web::Path<Info>) -> Result<String, Error> {
+    Ok(format!("Welcome {}, echo_id {}!", info.friend, info.echo_id))
+}
+
+#[get("/error")]
+async fn error() -> Result<String, HttpErrorCode> {
+    Err(HttpErrorCode::BadRequest { message: ErrorResponse { message: "missing user id".into(), error_code: "MissingUserId".into() } })
+}
+
+
+pub fn config(cfg: &mut web::ServiceConfig) {
+    cfg.service(web::scope("/echo")
+        .guard(ContentTypeHeader)
+        .guard(guard::Not(MethodAllowed))
+        .service(echo)
+        .service(counter)
+        .service(users)
+        .service(index)
+        .service(error));
+}
+
+// #[post("/echo")]
+// async fn echo(req_body: String) -> impl Responder {
+//     HttpResponse::Ok().body(req_body)
+// }
+//
+// async fn manual_hello() -> impl Responder {
+//     HttpResponse::Ok().body("Hey there!")
+// }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::{test, web, App};
+    use crate::echo_resource;
+    use actix_web::http::StatusCode;
+
+    #[actix_rt::test]
+    async fn test_error() {
+        let mut app = test::init_service(App::new().configure(echo_resource::config)).await;
+        let req = test::TestRequest::with_header("content-type", "application/json").uri("/echo/error").to_request();
+        let resp = test::call_service(&mut app, req).await;
+        assert!(!resp.status().is_success());
+        assert_eq!(StatusCode::BAD_REQUEST, resp.status())
+    }
+
+    #[actix_rt::test]
+    async fn test_counter() {
+        let c = web::Data::new(echo_resource::AppStateWithCounter::new());
+        let mut app = test::init_service(App::new().app_data(c.clone()).configure(echo_resource::config)).await;
+        let req = test::TestRequest::with_uri("/echo/counter").to_request();
+        let resp = test::call_service(&mut app, req).await;
+        assert!(!resp.status().is_success());
+        assert_eq!(StatusCode::NOT_FOUND, resp.status());
+
+        let req = test::TestRequest::with_header("content-type", "application/json").uri("/echo/counter").to_request();
+        let resp = test::call_service(&mut app, req).await;
+        assert!(resp.status().is_success());
+    }
+}
