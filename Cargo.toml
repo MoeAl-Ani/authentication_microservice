@@ -3,6 +3,9 @@ name = "authentication_microservice"
 version = "0.1.0"
 authors = ["Mohammed Al-Ani <mohammedalanny@gmail.com>"]
 edition = "2018"
+repository = "https://github.com/MoeAl-Ani/authentication_microservice"
+keywords = ["rust", "microservice", "authentication", "actix"]
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
