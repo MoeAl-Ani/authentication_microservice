@@ -1,6 +1,7 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Serialize, Deserialize};
-use jsonwebtoken::{encode, decode, Header, Algorithm, Validation, EncodingKey, DecodingKey};
+use jsonwebtoken::{encode, decode, Header, Algorithm, Validation, EncodingKey, DecodingKey, TokenData};
+use jsonwebtoken::errors::Error;
 
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -32,8 +33,12 @@ pub fn issue(claims: &mut JwtClaims) -> String {
     encode(&header, claims, &EncodingKey::from_secret("secret".as_ref())).unwrap()
 }
 
-pub fn verify(token: &String) -> JwtClaims {
-    decode::<JwtClaims>(token, &DecodingKey::from_secret("secret".as_ref()), &Validation::default()).unwrap().claims
+pub fn verify(token: &String) -> Option<JwtClaims> {
+    let result = decode::<JwtClaims>(token, &DecodingKey::from_secret("secret".as_ref()), &Validation::default());
+    match result {
+        Ok(data) => {Some(data.claims)}
+        Err(_) => {None}
+    }
 }
 
 #[cfg(test)]
@@ -71,7 +76,7 @@ mod test {
         assert!(!token.is_empty());
 
         // verify it is correct
-        let verified_claims = verify(&token);
+        let verified_claims = verify(&token).unwrap();
         assert_eq!(claims.sub.unwrap(), verified_claims.sub.unwrap());
         assert_eq!(claims.jwt_id.unwrap(), verified_claims.jwt_id.unwrap());
         assert_eq!(claims.issuer.unwrap(), verified_claims.issuer.unwrap());

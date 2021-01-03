@@ -6,10 +6,12 @@ use log::{debug, error, log_enabled, info, Level};
 use actix_web::middleware::Logger;
 use env_logger::Env;
 use crate::filters::{ContentTypeHeader, MethodAllowed};
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse};
 
 mod echo_resource;
 mod error_base;
 mod filters;
+mod jwt_service;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -21,6 +23,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
+            .wrap(filters::AuthFilter)
             .app_data(counter.clone())
             .configure(echo_resource::config)
     })
