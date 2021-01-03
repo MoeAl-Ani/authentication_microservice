@@ -1,11 +1,17 @@
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder, HttpRequest, Error, guard};
-use std::sync::Mutex;
+use std::sync::{Mutex, RwLock};
+
+use actix_web::{App, Error, get, guard, HttpRequest, HttpResponse, HttpServer, post, Responder, web};
 use actix_web::body::Body;
+use actix_web::web::Data;
 use futures::future::{ready, Ready};
-use serde::Serialize;
-use serde::Deserialize;
-use super::error_base::{HttpErrorCode, ErrorResponse};
 use log::debug;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::{main, UserPrinciple};
+use crate::jwt_service::SessionType;
+
+use super::error_base::{ErrorResponse, HttpErrorCode};
 use super::filters::{ContentTypeHeader, MethodAllowed};
 
 pub struct AppStateWithCounter {
@@ -65,7 +71,7 @@ pub async fn counter(data: web::Data<AppStateWithCounter>) -> impl Responder {
 
 /// model responder serialization
 #[get("/model")]
-pub async fn users(data: web::Data<AppStateWithCounter>) -> impl Responder {
+pub async fn users() -> impl Responder {
     EchoModel { name: "moe" }
 }
 
@@ -103,10 +109,12 @@ pub fn config(cfg: &mut web::ServiceConfig) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use actix_web::{test, web, App};
-    use crate::echo_resource;
+    use actix_web::{App, test, web};
     use actix_web::http::StatusCode;
+
+    use crate::echo_resource;
+
+    use super::*;
 
     #[actix_rt::test]
     async fn test_error() {

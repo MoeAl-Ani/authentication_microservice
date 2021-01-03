@@ -1,11 +1,12 @@
-use std::fmt::Error;
-use std::fmt::Display;
 use std::fmt::Debug;
+use std::fmt::Display;
+use std::fmt::Error;
+
 use actix_web::{
-    dev::HttpResponseBuilder, error, get, http::header, http::StatusCode, App, HttpResponse,
+    App, dev::HttpResponseBuilder, error, get, http::header, http::StatusCode, HttpResponse,
 };
-use serde::export::Formatter;
 use serde::Deserialize;
+use serde::export::Formatter;
 
 #[derive(Debug, Deserialize)]
 pub struct ErrorResponse {

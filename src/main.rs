@@ -1,17 +1,26 @@
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder, guard};
-use std::sync::Mutex;
-use log::{debug, error, log_enabled, info, Level};
+use std::collections::HashMap;
+use std::rc::Rc;
+use std::sync::{Arc, Mutex, RwLock};
 
-
+use actix_web::{App, get, guard, HttpResponse, HttpServer, post, Responder, web};
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse};
 use actix_web::middleware::Logger;
 use env_logger::Env;
+use log::{debug, error, info, Level, log_enabled};
+
 use crate::filters::{ContentTypeHeader, MethodAllowed};
-use actix_web::dev::{Service, ServiceRequest, ServiceResponse};
+use crate::jwt_service::SessionType;
 
 mod echo_resource;
 mod error_base;
 mod filters;
 mod jwt_service;
+
+#[derive(Debug, Clone)]
+pub struct UserPrinciple {
+    email: Option<String>,
+    session_type: Option<SessionType>
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -24,6 +33,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(Logger::default())
             .wrap(filters::AuthFilter)
+            .data(UserPrinciple { email: None, session_type: None })
             .app_data(counter.clone())
             .configure(echo_resource::config)
     })

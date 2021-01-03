@@ -1,10 +1,9 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
-use serde::{Serialize, Deserialize};
-use jsonwebtoken::{encode, decode, Header, Algorithm, Validation, EncodingKey, DecodingKey, TokenData};
+use jsonwebtoken::{Algorithm, decode, DecodingKey, encode, EncodingKey, Header, TokenData, Validation};
 use jsonwebtoken::errors::Error;
+use serde::{Deserialize, Serialize};
 
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub enum SessionType {
     USER, GUEST, SYSADMIN
 }
@@ -29,7 +28,7 @@ pub struct JwtClaims {
 }
 
 pub fn issue(claims: &mut JwtClaims) -> String {
-    let mut header = Header::new(Algorithm::HS256);
+    let header = Header::new(Algorithm::HS256);
     encode(&header, claims, &EncodingKey::from_secret("secret".as_ref())).unwrap()
 }
 
@@ -43,10 +42,12 @@ pub fn verify(token: &String) -> Option<JwtClaims> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use chrono::{NaiveDateTime, Utc, Timelike, Duration};
-    use std::time::SystemTime;
     use std::ops::Add;
+    use std::time::SystemTime;
+
+    use chrono::{Duration, NaiveDateTime, Timelike, Utc};
+
+    use super::*;
 
     #[test]
     fn test_time() {
