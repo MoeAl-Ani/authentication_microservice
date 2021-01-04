@@ -10,6 +10,9 @@ use log::{debug, error, info, Level, log_enabled};
 
 use crate::filters::{ContentTypeHeader, MethodAllowed};
 use crate::jwt_service::SessionType;
+use std::fmt::Display;
+use serde::export::Formatter;
+
 
 mod echo_resource;
 mod error_base;
@@ -33,7 +36,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(Logger::default())
             .wrap(filters::AuthFilter)
-            .data(UserPrinciple { email: None, session_type: None })
+            .data(Mutex::new(UserPrinciple { email: None, session_type: None }))
             .app_data(counter.clone())
             .configure(echo_resource::config)
     })
