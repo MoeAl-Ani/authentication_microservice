@@ -57,7 +57,7 @@ pub async fn echo() -> impl Responder {
 
 /// shared state counter example
 #[get("/counter")]
-pub async fn counter(data: web::Data<AppStateWithCounter>) -> impl Responder {
+pub async fn counter(data: web::Data<AppStateWithCounter>, principal: Option<UserPrinciple>) -> impl Responder {
     match data.counter.lock() {
         Ok(mut c) => {
             *c += 1;

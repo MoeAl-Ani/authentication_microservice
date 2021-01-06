@@ -1,11 +1,35 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use jsonwebtoken::{Algorithm, decode, DecodingKey, encode, EncodingKey, Header, TokenData, Validation};
-use jsonwebtoken::errors::Error;
 use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter, Error};
+use std::str::FromStr;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
 pub enum SessionType {
     USER, GUEST, SYSADMIN
+}
+
+impl Display for SessionType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SessionType::USER => {write!(f,"{}", "USER".to_string())}
+            SessionType::GUEST => {write!(f,"{}", "GUEST".to_string())}
+            SessionType::SYSADMIN => {write!(f,"{}", "SYSADMIN".to_string())}
+        }
+    }
+}
+
+impl FromStr for SessionType {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "USER" => {Ok(SessionType::USER)}
+            "GUEST" => {Ok(SessionType::GUEST)},
+            "SYSADMIN" => {Ok(SessionType::SYSADMIN)},
+            &_ => {Err(Error)}
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -67,7 +91,7 @@ mod test {
             iat: Utc::now().timestamp() as usize,
             issuer: Some("infotamia".to_string()),
             jwt_id: Some("myid".to_string()),
-            sub: Some("moe@gmail.com".to_string()),
+            sub: Some("ahmed@gmail.com".to_string()),
             access_token: Some("sometoken".to_string()),
             session_type: Some(SessionType::USER)
         };

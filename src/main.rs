@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex, RwLock};
 
-use actix_web::{App, get, guard, HttpResponse, HttpServer, post, Responder, web};
+use actix_web::{App, get, guard, HttpResponse, HttpServer, post, Responder, web, Error};
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse};
 use actix_web::middleware::Logger;
 use env_logger::Env;
@@ -12,6 +12,9 @@ use crate::filters::{ContentTypeHeader, MethodAllowed};
 use crate::jwt_service::SessionType;
 use std::fmt::Display;
 use serde::export::Formatter;
+use rand::prelude::*;
+use futures::future::{ok, Ready};
+use tokio::macros::support::Future;
 
 
 mod echo_resource;
@@ -36,7 +39,10 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(Logger::default())
             .wrap(filters::AuthFilter)
-            .data(Mutex::new(UserPrinciple { email: None, session_type: None }))
+            .data_factory(|| -> Ready<Result<String, Error>>{
+                let x: u8 = random();
+                ok(format!("Thread-{}", x))
+            })
             .app_data(counter.clone())
             .configure(echo_resource::config)
     })
