@@ -40,7 +40,7 @@ impl Guard for MethodAllowed {
             "POST" => { true }
             "PATCH" => { true }
             "DELETE" => { true }
-            "OPTION" => { true }
+            "OPTIONS" => { true }
             _ => { false }
         }
     }
@@ -86,57 +86,64 @@ impl<S, B> Service for AuthFilterMiddleware<S>
     }
 
     fn call(&mut self, mut req: ServiceRequest) -> Self::Future {
-        let path = req.path();
-        if path.contains("/login/1") || path.contains("/login/2") {
-            //Either::Left(self.service.call(req))
-            let fut = self.service.call(req);
+        if req.method().as_str() == "OPTIONS" {
             Box::pin(async move {
-                let res = fut.await?;
+                let res = req.into_response(HttpResponse::Ok().finish().into_body());
                 Ok(res)
             })
         } else {
-            if req.headers().contains_key("Authorization") {
-                let authorization = req.headers().get("Authorization").unwrap();
-                let mut auth_value = authorization.to_str().unwrap();
-                let mut jwt = "";
-                for (index, v) in auth_value.char_indices() {
-                    if index == 7 {
-                        jwt = &auth_value[7..];
-                        break;
-                    }
-                }
-
-                match verify(&jwt.to_string()) {
-                    None => {
-                        Box::pin(async move {
-                            let res = req.into_response(HttpResponse::Unauthorized().finish().into_body());
-                            Ok(res)
-                        })
-                    }
-                    Some(claim) => {
-                        // found claim
-                        let email = &claim.sub.unwrap();
-
-                        let h = req.headers_mut();
-                        h.insert(HeaderName::from_static("is_valid"), HeaderValue::try_from("true".to_string()).unwrap());
-                        h.insert(HeaderName::from_static("email"), HeaderValue::try_from(email).unwrap());
-                        h.insert(HeaderName::from_static("session_type"), HeaderValue::try_from(claim.session_type.unwrap().clone().to_string()).unwrap());
-                        let fut = self.service.call(req);
-
-                        Box::pin(async move {
-                            let res = fut.await?;
-                            Ok(res)
-                        })
-                    }
-                }
-            } else {
-                debug!("no auth found");
+            let path = req.path();
+            if path.contains("/login/1") || path.contains("/login/2") {
+                let fut = self.service.call(req);
                 Box::pin(async move {
-                    let res = req.into_response(HttpResponse::Unauthorized().finish().into_body());
+                    let res = fut.await?;
                     Ok(res)
                 })
+            } else {
+                if req.headers().contains_key("Authorization") {
+                    let authorization = req.headers().get("Authorization").unwrap();
+                    let mut auth_value = authorization.to_str().unwrap();
+                    let mut jwt = "";
+                    for (index, v) in auth_value.char_indices() {
+                        if index == 7 {
+                            jwt = &auth_value[7..];
+                            break;
+                        }
+                    }
+
+                    match verify(&jwt.to_string()) {
+                        None => {
+                            Box::pin(async move {
+                                let res = req.into_response(HttpResponse::Unauthorized().finish().into_body());
+                                Ok(res)
+                            })
+                        }
+                        Some(claim) => {
+                            // found claim
+                            let email = &claim.sub.unwrap();
+
+                            let h = req.headers_mut();
+                            h.insert(HeaderName::from_static("is_valid"), HeaderValue::try_from("true".to_string()).unwrap());
+                            h.insert(HeaderName::from_static("email"), HeaderValue::try_from(email).unwrap());
+                            h.insert(HeaderName::from_static("session_type"), HeaderValue::try_from(claim.session_type.unwrap().clone().to_string()).unwrap());
+                            let fut = self.service.call(req);
+
+                            Box::pin(async move {
+                                let res = fut.await?;
+                                Ok(res)
+                            })
+                        }
+                    }
+                } else {
+                    debug!("no auth found");
+                    Box::pin(async move {
+                        let res = req.into_response(HttpResponse::Unauthorized().finish().into_body());
+                        Ok(res)
+                    })
+                }
             }
         }
+
     }
 }
 
@@ -174,7 +181,7 @@ mod test {
     use futures::task::SpawnExt;
     use tokio::task;
 
-    use crate::{echo_resource, filters};
+    use crate::{echo_resource, filters, cors_filter};
     use crate::jwt_service::{issue, SessionType};
 
     use super::*;
@@ -224,7 +231,9 @@ mod test {
         env_logger::try_init();
 
         let c = web::Data::new(echo_resource::AppStateWithCounter::new());
-        let mut app = test::init_service(App::new().wrap(filters::AuthFilter)
+        let mut app = test::init_service(App::new()
+            .wrap(filters::AuthFilter)
+            .wrap(cors_filter::CorsFilter)
             .app_data(c.clone())
             .configure(echo_resource::config)).await;
 
