@@ -1,8 +1,15 @@
-FROM rust:1.31
+FROM debian:buster-slim
+
+RUN apt-get update \
+    && apt-get install -y ca-certificates tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV TZ=Etc/UTC
+
 WORKDIR /
 
-COPY ["target/release/authentication_microservice", "authentication_microservice"]
+COPY ["target/release/authentication_microservice", "rust/authentication_microservice"]
 
 EXPOSE 8080
-
-CMD ./authentication_microservice
+RUN chmod +x rust/authentication_microservice
+CMD ["./rust/authentication_microservice"]
