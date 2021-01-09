@@ -22,6 +22,7 @@ mod filters;
 mod jwt_service;
 mod cors_filter;
 mod user_dao;
+mod oauth;
 
 #[derive(Debug, Clone)]
 pub struct UserPrinciple {
