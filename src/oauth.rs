@@ -4,16 +4,20 @@ use serde::{Deserialize, Serialize};
 
 pub trait BaseOAuth20Service {
     type ExternalAccount;
-    fn get_authorization_url(&self) -> &str;
+    fn get_authorization_url(&self) -> String;
     fn get_access_token(&self, code: &String) -> String;
     fn get_account_details(&self, access_token: &String) -> Option<Self::ExternalAccount>;
 }
 
-struct FacebookAuthenticationService;
+struct FacebookAuthenticationService {
+    config: FacebookConfiguration
+}
 
 impl FacebookAuthenticationService {
     fn new() -> Self {
-        FacebookAuthenticationService {}
+        FacebookAuthenticationService {
+            config: FacebookConfiguration::new()
+        }
     }
 }
 
@@ -21,8 +25,13 @@ impl BaseOAuth20Service for FacebookAuthenticationService {
     type ExternalAccount = ExternalAccount;
 
     /// return this to the caller (client)
-    fn get_authorization_url(&self) -> &str {
-        unimplemented!()
+    fn get_authorization_url(&self) -> String {
+        /// fbauth.getauthurl
+        FacebookOAuth20Builder::new(&self.config.client_secret, &self.config.client_id)
+            .scope("email".to_string())
+            .redirect_url(self.config.callback_url.clone())
+            .state("cunt".to_string())
+            .build()
     }
 
     /// fetch auth token by code
@@ -43,7 +52,7 @@ struct ExternalAccount {
     access_token: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct FacebookConfiguration {
     client_id: String,
     client_secret: String,
@@ -63,23 +72,24 @@ impl FacebookConfiguration {
             eprintln!("error deserializing file content {}", err);
             process::exit(1);
         });
+        println!("config {:?}", fb_config);
         fb_config
     }
 }
 
-struct FacebookOAuth20Builder {
+struct FacebookOAuth20Builder<'a> {
     scope: Option<String>,
     redirect_url: Option<String>,
     state: Option<String>,
-    client_secret: String,
-    client_id: String,
+    client_secret: &'a String,
+    client_id: &'a String,
 }
 
-impl FacebookOAuth20Builder {
-    fn new(client_secret: String, client_id: String) -> Self {
+impl <'a> FacebookOAuth20Builder<'a> {
+    fn new(client_secret: &'a String, client_id: &'a String) -> Self {
         FacebookOAuth20Builder {
-            client_id,
-            client_secret,
+            client_id: client_id,
+            client_secret: client_secret,
             scope: Some(format!("")),
             redirect_url: Some(format!("")),
             state: Some(format!("")),
@@ -101,6 +111,7 @@ impl FacebookOAuth20Builder {
     }
     fn build(&self) -> String {
         let mut base = "https://www.facebook.com/v9.0/dialog/oauth?".to_string();
+        println!("{}", self.client_id);
         base.push_str(format!("client_id={}", self.client_id).as_str());
 
         match self.scope {
@@ -126,7 +137,7 @@ impl FacebookOAuth20Builder {
                 panic!(" no state supplied");
             }
             Some(ref url) => {
-                base.push_str(format!("&redirect_url={}", url).as_str());
+                base.push_str(format!("&redirect_uri={}", url).as_str());
             }
         };
         base
@@ -140,8 +151,8 @@ mod test {
     #[test]
     fn test_auth_service() {
         let service = FacebookAuthenticationService::new();
-        let string = format!("ss");
-        service.get_access_token(&string);
+        let url = service.get_authorization_url();
+        println!("url = {}", url)
     }
 
     #[test]
@@ -152,12 +163,14 @@ mod test {
 
     #[test]
     fn test_facebook_oauth_builder() {
-        let authorization_url = FacebookOAuth20Builder::new("secret".to_string(), "id".to_string())
+        let client_secret = "secret".to_string();
+        let client_id = "id".to_string();
+        let authorization_url = FacebookOAuth20Builder::new(&client_secret, &client_id)
             .scope("email".to_string())
             .state("cunt".to_string())
             .redirect_url("someurl".to_string())
             .build();
-        assert_eq!(authorization_url, "https://www.facebook.com/v9.0/dialog/oauth?client_id=id&scope=email&state=cunt&redirect_url=someurl")
+        assert_eq!(authorization_url, "https://www.facebook.com/v9.0/dialog/oauth?client_id=id&scope=email&state=cunt&redirect_uri=someurl")
     }
 }
 
