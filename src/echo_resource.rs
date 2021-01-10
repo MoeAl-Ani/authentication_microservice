@@ -5,8 +5,7 @@ use actix_web::body::Body;
 use actix_web::web::Data;
 use futures::future::{ready, Ready};
 use log::debug;
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{main, UserPrinciple};
 use crate::jwt_service::SessionType;
@@ -89,8 +88,6 @@ async fn error() -> Result<String, HttpErrorCode> {
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(web::scope("/echo")
-        .guard(ContentTypeHeader)
-        .guard(guard::Not(MethodAllowed))
         .service(echo)
         .service(counter)
         .service(users)

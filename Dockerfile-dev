@@ -11,6 +11,8 @@ WORKDIR /
 
 COPY ["target/release/authentication_microservice", "rust/authentication_microservice"]
 
+WORKDIR /rust/
+
 EXPOSE 8080
-RUN chmod +x rust/authentication_microservice
-CMD ["./rust/authentication_microservice"]
+RUN chmod +x authentication_microservice
+CMD ["./authentication_microservice"]

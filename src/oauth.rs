@@ -1,26 +1,44 @@
 use std::{fs, process};
 
 use serde::{Deserialize, Serialize};
+use actix_web::client::{Client, SendRequestError, ClientResponse, JsonPayloadError, Connector};
+use actix_web::web::Bytes;
+use tokio::{task};
+use actix_web::dev::Payload;
+use actix_web::error::PayloadError;
+use futures::future::TryFutureExt;
+use std::sync::Arc;
+use futures::{FutureExt, AsyncReadExt};
+use reqwest;
+use reqwest::{Url, Response, Error};
+use openssl::ssl::{SslConnector, SslMethod};
+use async_trait::async_trait;
+use log::error;
+use crate::jwt_service::{JwtClaims, SessionType, issue};
+use chrono::{Utc, Duration};
+use std::ops::Add;
 
+#[async_trait]
 pub trait BaseOAuth20Service {
     type ExternalAccount;
     fn get_authorization_url(&self) -> String;
-    fn get_access_token(&self, code: &String) -> String;
-    fn get_account_details(&self, access_token: &String) -> Option<Self::ExternalAccount>;
+    async fn get_access_token(&self, code: &String) -> String;
+    async fn get_account_details(&self, access_token: &String) -> Option<Self::ExternalAccount>;
 }
 
-struct FacebookAuthenticationService {
+pub struct FacebookAuthenticationService {
     config: FacebookConfiguration
 }
 
 impl FacebookAuthenticationService {
-    fn new() -> Self {
+    pub fn new() -> Self {
         FacebookAuthenticationService {
             config: FacebookConfiguration::new()
         }
     }
 }
 
+#[async_trait]
 impl BaseOAuth20Service for FacebookAuthenticationService {
     type ExternalAccount = ExternalAccount;
 
@@ -30,26 +48,76 @@ impl BaseOAuth20Service for FacebookAuthenticationService {
         FacebookOAuth20Builder::new(&self.config.client_secret, &self.config.client_id)
             .scope("email".to_string())
             .redirect_url(self.config.callback_url.clone())
-            .state("cunt".to_string())
-            .build()
+            .state(generate_state())
+            .build_step1()
     }
 
     /// fetch auth token by code
-    fn get_access_token(&self, code: &String) -> String {
-        unimplemented!()
+    async fn get_access_token(&self, code: &String) -> String {
+        let url = FacebookOAuth20Builder::new(&self.config.client_secret, &self.config.client_id)
+            .scope("email".to_string())
+            .redirect_url(self.config.callback_url.clone())
+            .code(code.clone())
+            .build_step2();
+        let response = reqwest::get(url.parse::<Url>().unwrap()).await;
+        match response {
+            Ok(res) => {
+                let data = res.text().await.unwrap();
+                let result: FacebookAccessTokenResponse = serde_json::from_str(&data).unwrap();
+                result.access_token
+            }
+            Err(err) => {
+                error!("error = {}", err);
+                "".to_string()
+            }
+        }
     }
 
     /// fetch account details using access_token
-    fn get_account_details(&self, access_token: &String) -> Option<Self::ExternalAccount> {
-        unimplemented!()
+    async fn get_account_details(&self, access_token: &String) -> Option<Self::ExternalAccount> {
+        /// &access_token
+        let mut profile_url = &mut self.config.profile_url.clone();
+        let access_suffix = format!("&access_token={}", access_token.as_str());
+        profile_url.push_str(access_suffix.as_str());
+        let response = reqwest::get(profile_url.parse::<Url>().unwrap()).await;
+        match response {
+            Ok(res) => {
+                let data = res.text().await.unwrap();
+                let mut result: ExternalAccount = serde_json::from_str(&data).unwrap();
+                result.access_token = Some(access_token.clone());
+                Some(result)
+            }
+            Err(err) => {
+                error!("error = {}", err);
+                None
+            }
+        }
+
     }
 }
 
-struct ExternalAccount {
-    first_name: Option<String>,
-    last_name: Option<String>,
-    email: String,
-    access_token: String,
+#[derive(Deserialize)]
+struct FacebookAccessTokenResponse {
+    access_token: String
+}
+
+#[derive(Deserialize)]
+pub struct ExternalAccount {
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub email: String,
+    pub access_token: Option<String>,
+}
+
+impl ExternalAccount {
+    pub fn new() -> Self {
+        ExternalAccount {
+            first_name: None,
+            last_name: None,
+            email: "".to_string(),
+            access_token: Some("".to_string())
+        }
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -83,16 +151,18 @@ struct FacebookOAuth20Builder<'a> {
     state: Option<String>,
     client_secret: &'a String,
     client_id: &'a String,
+    code: Option<String>
 }
 
 impl <'a> FacebookOAuth20Builder<'a> {
     fn new(client_secret: &'a String, client_id: &'a String) -> Self {
         FacebookOAuth20Builder {
-            client_id: client_id,
-            client_secret: client_secret,
+            client_id,
+            client_secret,
             scope: Some(format!("")),
             redirect_url: Some(format!("")),
             state: Some(format!("")),
+            code: None
         }
     }
     fn scope(mut self, scope: String) -> Self {
@@ -109,7 +179,12 @@ impl <'a> FacebookOAuth20Builder<'a> {
         self.state = Some(state);
         self
     }
-    fn build(&self) -> String {
+
+    fn code(mut self, code: String) -> Self {
+        self.code = Some(code);
+        self
+    }
+    fn build_step1(&self) -> String {
         let mut base = "https://www.facebook.com/v9.0/dialog/oauth?".to_string();
         println!("{}", self.client_id);
         base.push_str(format!("client_id={}", self.client_id).as_str());
@@ -142,6 +217,47 @@ impl <'a> FacebookOAuth20Builder<'a> {
         };
         base
     }
+
+    fn build_step2(&self) -> String {
+        let mut base = "https://graph.facebook.com/v9.0/oauth/access_token?".to_string();
+        println!("{}", self.client_id);
+        base.push_str(format!("client_id={}", self.client_id).as_str());
+        base.push_str(format!("&client_secret={}", self.client_secret).as_str());
+
+        match self.redirect_url {
+            None => {
+                panic!(" no state supplied");
+            }
+            Some(ref url) => {
+                base.push_str(format!("&redirect_uri={}", url).as_str());
+            }
+        };
+
+        match self.code {
+            None => {
+                panic!(" no code supplied");
+            }
+            Some(ref url) => {
+                base.push_str(format!("&code={}", url).as_str());
+            }
+        };
+        base
+    }
+}
+
+fn generate_state() -> String {
+    let mut claims = JwtClaims {
+        aud: None,
+        exp: Utc::now().add(Duration::minutes(1)).timestamp() as usize,
+        iat: Utc::now().timestamp() as usize,
+        issuer: Some("infotamia.com".to_string()),
+        jwt_id: Some(uuid::Uuid::new_v4().to_string()),
+        sub: Some(uuid::Uuid::new_v4().to_string()),
+        access_token: None,
+        session_type: None,
+    };
+
+    issue(&mut claims)
 }
 
 #[cfg(test)]
@@ -169,7 +285,7 @@ mod test {
             .scope("email".to_string())
             .state("cunt".to_string())
             .redirect_url("someurl".to_string())
-            .build();
+            .build_step1();
         assert_eq!(authorization_url, "https://www.facebook.com/v9.0/dialog/oauth?client_id=id&scope=email&state=cunt&redirect_uri=someurl")
     }
 }

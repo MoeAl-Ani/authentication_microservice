@@ -1,0 +1,11 @@
+version: '3.7'
+services:
+  haproxy:
+    image: haproxy:1.9
+    volumes:
+      - ${PWD}/config/haproxy_base.cfg:/usr/local/etc/haproxy/haproxy.cfg
+      - ${PWD}/config/myselfsigned.pem:/etc/ssl/myselfsigned.pem
+    ports:
+      - 80:80
+      - 443:443
+    container_name: haproxy

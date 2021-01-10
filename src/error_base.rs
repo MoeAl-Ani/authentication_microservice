@@ -20,13 +20,17 @@ pub enum ErrorCode {
 }
 #[derive(Debug)]
 pub enum HttpErrorCode {
-    BadRequest {message: ErrorResponse}
+    BadRequest {message: ErrorResponse},
+    UnAuthorized {message: ErrorResponse}
 }
 
 impl Display for HttpErrorCode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             HttpErrorCode::BadRequest { message: error_detail } => {
+                write!(f, "({}, {})", error_detail.message, error_detail.error_code)
+            }
+            HttpErrorCode::UnAuthorized { message: error_detail } => {
                 write!(f, "({}, {})", error_detail.message, error_detail.error_code)
             }
         }
@@ -40,12 +44,15 @@ impl error::ResponseError for HttpErrorCode {
             HttpErrorCode::BadRequest { .. } => {
                 StatusCode::BAD_REQUEST
             }
+            HttpErrorCode::UnAuthorized { .. } => {
+                StatusCode::UNAUTHORIZED
+            }
         }
     }
 
     fn error_response(&self) -> HttpResponse {
         HttpResponseBuilder::new(self.status_code())
-            .set_header(header::CONTENT_TYPE, "text/html; charset=utf-8")
+            .set_header(header::CONTENT_TYPE, "application/json; charset=utf-8")
             .body(self.to_string())
     }
 }

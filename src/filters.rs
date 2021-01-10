@@ -93,7 +93,7 @@ impl<S, B> Service for AuthFilterMiddleware<S>
             })
         } else {
             let path = req.path();
-            if path.contains("/login/1") || path.contains("/login/2") {
+            if path.contains("iot/auth2/") {
                 let fut = self.service.call(req);
                 Box::pin(async move {
                     let res = fut.await?;

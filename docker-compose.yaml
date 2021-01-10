@@ -6,6 +6,8 @@ services:
       dockerfile: Dockerfile-dev
     ports:
       - "8080:8080"
+    volumes:
+    - ${PWD}/facebook_configuration.json:/rust/facebook_configuration.json
 #  authentication_2:
 #    build:
 #      context: ./

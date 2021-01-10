@@ -15,6 +15,7 @@ use tokio::macros::support::Future;
 
 use crate::filters::{ContentTypeHeader, MethodAllowed};
 use crate::jwt_service::SessionType;
+use crate::oauth::FacebookAuthenticationService;
 
 mod echo_resource;
 mod error_base;
@@ -23,6 +24,7 @@ mod jwt_service;
 mod cors_filter;
 mod user_dao;
 mod oauth;
+mod facebook_resource;
 
 #[derive(Debug, Clone)]
 pub struct UserPrinciple {
@@ -47,7 +49,9 @@ async fn main() -> std::io::Result<()> {
                 ok(format!("Thread-{}", x))
             })
             .app_data(counter.clone())
+            .data(FacebookAuthenticationService::new())
             .configure(echo_resource::config)
+            .configure(facebook_resource::config)
     })
         .bind("0.0.0.0:8080")?
         .run()
