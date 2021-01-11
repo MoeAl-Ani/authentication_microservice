@@ -16,6 +16,7 @@ use tokio::macros::support::Future;
 use crate::filters::{ContentTypeHeader, MethodAllowed};
 use crate::jwt_service::SessionType;
 use crate::oauth::FacebookAuthenticationService;
+use crate::connection_pool_manager::PoolInstantiate;
 
 mod echo_resource;
 mod error_base;
@@ -25,6 +26,8 @@ mod cors_filter;
 mod user_dao;
 mod oauth;
 mod facebook_resource;
+mod connection_pool_manager;
+mod user_resource;
 
 #[derive(Debug, Clone)]
 pub struct UserPrinciple {
@@ -38,7 +41,7 @@ async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "debug");
     std::env::set_var("RUST_BACKTRACE", "1");
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
-
+    let pool = web::Data::new(PoolInstantiate::init());
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
@@ -49,9 +52,11 @@ async fn main() -> std::io::Result<()> {
                 ok(format!("Thread-{}", x))
             })
             .app_data(counter.clone())
+            .app_data(pool.clone())
             .data(FacebookAuthenticationService::new())
             .configure(echo_resource::config)
             .configure(facebook_resource::config)
+            .configure(user_resource::config)
     })
         .bind("0.0.0.0:8080")?
         .run()

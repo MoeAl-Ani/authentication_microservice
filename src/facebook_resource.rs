@@ -7,6 +7,34 @@ use chrono::{Utc, Duration};
 use std::ops::Add;
 use uuid::Uuid;
 use serde::Deserialize;
+use mysql::{Pool, Value};
+use mysql::prelude::{TextQuery, Queryable};
+use mysql::params::Params;
+use mysql::params;
+use mysql::prelude::*;
+use std::collections::HashMap;
+
+struct UserEntity {
+    id: Option<i32>,
+    first_name: Option<String>,
+    last_name: Option<String>,
+    email: String,
+    phone_number: String,
+    language_id: i32
+}
+
+impl UserEntity {
+    fn from_external_account(extenral_account: &ExternalAccount) -> Self {
+        UserEntity {
+            first_name: extenral_account.first_name.clone(),
+            last_name: extenral_account.last_name.clone(),
+            email: extenral_account.email.clone(),
+            phone_number: "0403231145".to_string(),
+            id: None,
+            language_id: 1
+        }
+    }
+}
 
 #[derive(Deserialize)]
 struct CallbackQuery {
@@ -14,6 +42,7 @@ struct CallbackQuery {
     state: String
 }
 /// step one login
+/// return a url String.
 #[get("/login1")]
 pub async fn login_step_1(auth_service: web::Data<FacebookAuthenticationService>) -> impl Responder {
     auth_service.get_authorization_url()
@@ -22,25 +51,37 @@ pub async fn login_step_1(auth_service: web::Data<FacebookAuthenticationService>
 /// general echo resource
 #[get("/callback")]
 pub async fn login_step_2(
-    mut auth_service: web::Data<FacebookAuthenticationService>, query: web::Query<CallbackQuery>) -> Result<HttpResponse, HttpErrorCode> {
-    /// TODO validate state
+    mut auth_service: web::Data<FacebookAuthenticationService>,
+    query: web::Query<CallbackQuery>,
+    pool: web::Data<Pool>) -> Result<HttpResponse, HttpErrorCode> {
     let state_option = jwt_service::verify(&query.state);
     match state_option {
         None => {
             return Err(HttpErrorCode::UnAuthorized {message : ErrorResponse {message: "no user found".to_string(), error_code : "unauthorized".to_string()}})
         }
-        Some(data) => {
+        Some(_) => {
 
         }
     };
     let access_token = auth_service.get_access_token(&query.code).await;
     let user_profile_optional = auth_service.get_account_details(&access_token).await;
-    //let user_profile_optional = Some(ExternalAccount::new());
     match user_profile_optional {
         None => {
             Err(HttpErrorCode::UnAuthorized {message : ErrorResponse {message: "no user found".to_string(), error_code : "unauthorized".to_string()}})
         }
         Some(user) => {
+            let mut conn = pool.get_conn().unwrap().unwrap();
+            let vec_entities = vec![UserEntity::from_external_account(&user)];
+            let statement = conn.prep(r"INSERT INTO user(first_name, last_name, email, phone_number, language_id) VALUES(:first_name,:last_name,:email,:phone_number,:language_id)").unwrap();
+            let result = conn.exec_batch(&statement,
+                                         vec_entities.iter().map(|e| mysql::params! {
+                   "first_name" => &e.first_name,
+                   "last_name" => &e.last_name,
+                   "email" => &e.email,
+                   "phone_number" => &e.phone_number,
+                   "language_id" => e.language_id
+                })).unwrap_or_else(|err| {});
+            conn.close(statement);
             /// TODO insert user info to db if user not exist
             /// return a jwt for the caller
             /// create claims
