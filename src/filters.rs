@@ -19,6 +19,7 @@ use log::debug;
 
 use crate::jwt_service::{JwtClaims, SessionType, verify};
 use crate::UserPrinciple;
+use mysql::{Conn, Pool};
 
 pub struct ContentTypeHeader;
 

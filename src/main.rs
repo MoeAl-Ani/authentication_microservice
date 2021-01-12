@@ -16,7 +16,7 @@ use tokio::macros::support::Future;
 use crate::filters::{ContentTypeHeader, MethodAllowed};
 use crate::jwt_service::SessionType;
 use crate::oauth::FacebookAuthenticationService;
-use crate::connection_pool_manager::PoolInstantiate;
+use crate::connection_pool_manager::{PoolInstantiate};
 
 mod echo_resource;
 mod error_base;
@@ -28,6 +28,8 @@ mod oauth;
 mod facebook_resource;
 mod connection_pool_manager;
 mod user_resource;
+mod user_service;
+mod entities;
 
 #[derive(Debug, Clone)]
 pub struct UserPrinciple {
