@@ -12,6 +12,14 @@ use crate::jwt_service::SessionType;
 
 use super::error_base::{ErrorResponse, HttpErrorCode};
 use super::filters::{ContentTypeHeader, MethodAllowed};
+use crate::connection_pool_manager::ConnectionHolder;
+use mysql::{Pool, Value, Row, Conn, Error as MysqlError, TxOpts};
+use mysql::prelude::{TextQuery, Queryable};
+use mysql::params::Params;
+use mysql::params;
+use mysql::prelude::*;
+use uuid::Uuid;
+use crate::entities::UserEntity;
 
 pub struct AppStateWithCounter {
     pub counter: Mutex<i32>,
@@ -85,6 +93,49 @@ async fn error() -> Result<String, HttpErrorCode> {
     Err(HttpErrorCode::BadRequest { message: ErrorResponse { message: "missing user id".into(), error_code: "MissingUserId".into() } })
 }
 
+#[post("/write_user")]
+pub async fn mock(user: UserPrinciple, connection_holder: Option<ConnectionHolder>) -> impl Responder {
+    let mut conn = connection_holder.unwrap().conn;
+    let statement = conn.prep(r"INSERT INTO user(first_name, last_name, email, phone_number, language_id) VALUES(:first_name,:last_name,:email,:phone_number,:language_id)").unwrap();
+    let mut tx = conn.start_transaction(TxOpts::default()).unwrap();
+    let mut e = UserEntity {
+        email: format!("mock@{}", Uuid::new_v4().to_string().get(0..10).unwrap()),
+        phone_number: "0403231145".to_string(),
+        language_id: 1,
+        first_name: None,
+        last_name: None,
+        id: None
+    };
+    let result: Result<Option<Row>, MysqlError> = tx.exec_first(&statement,
+                                                           mysql::params! {
+                   "first_name" => &e.first_name,
+                   "last_name" => &e.last_name,
+                   "email" => &e.email,
+                   "phone_number" => &e.phone_number,
+                   "language_id" => e.language_id
+                });
+    match result {
+        Ok(_) => {
+            let affect_rows =tx.affected_rows();
+
+            match affect_rows {
+                1 => {
+                    tx.commit();
+                    conn.close(statement);
+                    Some(e)
+                }
+                _ => {
+                    tx.rollback();
+                    None
+                }
+            }
+        }
+        Err(_) => {
+            None
+        }
+    }
+}
+
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(web::scope("/echo")
@@ -92,17 +143,9 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         .service(counter)
         .service(users)
         .service(index)
-        .service(error));
+        .service(error)
+        .service(mock));
 }
-
-// #[post("/echo")]
-// async fn echo(req_body: String) -> impl Responder {
-//     HttpResponse::Ok().body(req_body)
-// }
-//
-// async fn manual_hello() -> impl Responder {
-//     HttpResponse::Ok().body("Hey there!")
-// }
 
 #[cfg(test)]
 mod tests {
