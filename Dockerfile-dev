@@ -10,12 +10,10 @@ ENV TZ=Etc/UTC
 WORKDIR /
 
 COPY ["target/release/authentication_microservice", "rust/authentication_microservice"]
-COPY ["config/sleep.sh", "rust/sleep.sh"]
 
 WORKDIR /rust/
 
 EXPOSE 8080
 RUN chmod +x authentication_microservice
-RUN chmod +x sleep.sh
 
-CMD ./sleep.sh && ./authentication_microservice
+CMD sleep 5 && ./authentication_microservice
