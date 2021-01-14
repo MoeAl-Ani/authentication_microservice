@@ -15,7 +15,10 @@ impl <'a> UserService<'a> {
     }
 
     pub fn fetch_by_email(&mut self, email: &String) -> Option<UserEntity> {
-        let option = self.user_dao.find_by_email(email);
-        None
+        self.user_dao.find_by_email(email)
+    }
+
+    pub fn create_one(&mut self, user_entity: UserEntity) -> Option<UserEntity> {
+        self.user_dao.insert_one(user_entity)
     }
 }

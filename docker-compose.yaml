@@ -8,6 +8,7 @@ services:
       - "8080:8080"
     volumes:
     - ${PWD}/facebook_configuration.json:/rust/facebook_configuration.json
+    - ${PWD}/config/mysql_configuration.json:/rust/mysql_configuration.json
 #  authentication_2:
 #    build:
 #      context: ./
@@ -20,6 +21,19 @@ services:
 #      dockerfile: Dockerfile-dev
 #    ports:
 #      - "8082:8080"
+  mysql:
+    image: mysql:latest
+    ports:
+      - "3306:3306"
+    volumes:
+      - db-vol:/var/lib/mysql
+      - ${PWD}/config/my.cnf:/etc/mysql/my.cnf
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - LANG=en_US.UTF-8
+      - LC_ALL=en_US.UTF-8
+      - LANGUAGE=en_US.UTF-8
+    container_name: mysql
   haproxy:
     image: haproxy:1.9
     volumes:
@@ -29,3 +43,5 @@ services:
       - 80:80
       - 443:443
     container_name: haproxy
+volumes:
+  db-vol:

@@ -24,10 +24,8 @@ use crate::connection_pool_manager::{ConnectionHolder};
 pub async fn profile(user: UserPrinciple, connection_holder: Option<ConnectionHolder>) -> impl Responder {
     let mut conn = connection_holder.unwrap().conn;
     let mut user_service = UserService::new(&mut conn);
-    let option = user_service.fetch_by_email(&user.email.unwrap());
-    "fetched"
+    user_service.fetch_by_email(&user.email.unwrap())
 }
-
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(web::scope("/user/")

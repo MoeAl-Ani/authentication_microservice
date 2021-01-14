@@ -15,6 +15,7 @@ use mysql::prelude::*;
 use std::collections::HashMap;
 use crate::entities::UserEntity;
 use crate::connection_pool_manager::ConnectionHolder;
+use crate::user_service::UserService;
 
 
 #[derive(Deserialize)]
@@ -52,21 +53,9 @@ pub async fn login_step_2(
         }
         Some(user) => {
             let mut conn = connection_holder.unwrap().conn;
-            let vec_entities = vec![UserEntity::from_external_account(&user)];
-            let statement = conn.prep(r"INSERT INTO user(first_name, last_name, email, phone_number, language_id) VALUES(:first_name,:last_name,:email,:phone_number,:language_id)").unwrap();
-            let result = conn.exec_batch(&statement,
-                                         vec_entities.iter().map(|e| mysql::params! {
-                   "first_name" => &e.first_name,
-                   "last_name" => &e.last_name,
-                   "email" => &e.email,
-                   "phone_number" => &e.phone_number,
-                   "language_id" => e.language_id
-                })).unwrap_or_else(|err| {});
-            conn.close(statement);
-            /// TODO insert user info to db if user not exist
-            /// return a jwt for the caller
-            /// create claims
-            /// issue
+            let mut service = UserService::new(&mut conn);
+            let entity = UserEntity::from_external_account(&user);
+            service.create_one(entity);
             let mut claims = JwtClaims {
                 aud: None,
                 exp: Utc::now().add(Duration::days(1)).timestamp() as usize,
