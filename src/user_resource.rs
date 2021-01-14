@@ -17,10 +17,12 @@ use std::ops::Add;
 use uuid::Uuid;
 use mysql::Pool;
 use crate::user_service::UserService;
+use crate::connection_pool_manager::{ConnectionHolder};
+
 
 #[get("/profile")]
-pub async fn profile(user: UserPrinciple, pool: web::Data<Pool>) -> impl Responder {
-    let mut conn = pool.get_conn().unwrap().unwrap();
+pub async fn profile(user: UserPrinciple, connection_holder: Option<ConnectionHolder>) -> impl Responder {
+    let mut conn = connection_holder.unwrap().conn;
     let mut user_service = UserService::new(&mut conn);
     let option = user_service.fetch_by_email(&user.email.unwrap());
     "fetched"

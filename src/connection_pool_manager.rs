@@ -42,6 +42,18 @@ impl PoolInstantiate {
     }
 }
 
+pub struct ConnectionHolder {
+    pub conn: Conn
+}
+
+impl ConnectionHolder {
+    pub fn new(conn: Conn) -> Self {
+        ConnectionHolder {
+            conn
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

@@ -87,12 +87,12 @@ mod test {
     fn test_issuing_verifying_jwt() {
         let mut claims = JwtClaims {
             aud: Some("".to_string()),
-            exp: Utc::now().add(Duration::days(1)).timestamp() as usize,
+            exp: Utc::now().add(Duration::days(1000)).timestamp() as usize,
             iat: Utc::now().timestamp() as usize,
             issuer: Some("infotamia".to_string()),
             jwt_id: Some("myid".to_string()),
-            sub: Some("ahmed@gmail.com".to_string()),
-            access_token: Some("sometoken".to_string()),
+            sub: Some("mohammedalanny@gmail.com".to_string()),
+            access_token: Some("hdhsjhdjshdjsk".to_string()),
             session_type: Some(SessionType::USER)
         };
 

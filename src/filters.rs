@@ -19,7 +19,8 @@ use log::debug;
 
 use crate::jwt_service::{JwtClaims, SessionType, verify};
 use crate::UserPrinciple;
-use mysql::{Conn, Pool};
+use mysql::{Conn, Pool, PooledConn};
+use crate::connection_pool_manager::ConnectionHolder;
 
 pub struct ContentTypeHeader;
 
@@ -163,6 +164,35 @@ impl FromRequest for UserPrinciple {
             })
         } else {
             err(ErrorUnauthorized("no valid session found"))
+        }
+    }
+}
+
+impl FromRequest for ConnectionHolder {
+    type Error = Error;
+    type Future = Ready<Result<Self, Self::Error>>;
+    type Config = ();
+
+    fn from_request(req: &HttpRequest, payload: &mut Payload<PayloadStream>) -> Self::Future {
+        let pool = req.app_data::<web::Data<Pool>>();
+        match pool {
+            None => {
+                err(ErrorUnauthorized("no valid pool found"))
+            }
+            Some(p) => {
+                let pc = pool.unwrap().get_conn();
+                match pc {
+                    Ok(pcc) => {
+                        let mut conn = pcc.unwrap();
+                        ok(ConnectionHolder {
+                            conn
+                        })
+                    }
+                    Err(_) => {
+                        err(ErrorUnauthorized("no valid pooled connection found"))
+                    }
+                }
+            }
         }
     }
 }

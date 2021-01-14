@@ -14,6 +14,7 @@ use mysql::params;
 use mysql::prelude::*;
 use std::collections::HashMap;
 use crate::entities::UserEntity;
+use crate::connection_pool_manager::ConnectionHolder;
 
 
 #[derive(Deserialize)]
@@ -33,7 +34,7 @@ pub async fn login_step_1(auth_service: web::Data<FacebookAuthenticationService>
 pub async fn login_step_2(
     mut auth_service: web::Data<FacebookAuthenticationService>,
     query: web::Query<CallbackQuery>,
-    pool: web::Data<Pool>) -> Result<HttpResponse, HttpErrorCode> {
+    connection_holder: Option<ConnectionHolder>) -> Result<HttpResponse, HttpErrorCode> {
     let state_option = jwt_service::verify(&query.state);
     match state_option {
         None => {
@@ -50,7 +51,7 @@ pub async fn login_step_2(
             Err(HttpErrorCode::UnAuthorized {message : ErrorResponse {message: "no user found".to_string(), error_code : "unauthorized".to_string()}})
         }
         Some(user) => {
-            let mut conn = pool.get_conn().unwrap().unwrap();
+            let mut conn = connection_holder.unwrap().conn;
             let vec_entities = vec![UserEntity::from_external_account(&user)];
             let statement = conn.prep(r"INSERT INTO user(first_name, last_name, email, phone_number, language_id) VALUES(:first_name,:last_name,:email,:phone_number,:language_id)").unwrap();
             let result = conn.exec_batch(&statement,
