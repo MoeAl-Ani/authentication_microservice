@@ -19,8 +19,6 @@ use log::debug;
 
 use crate::jwt_service::{JwtClaims, SessionType, verify};
 use crate::UserPrinciple;
-use mysql::{Conn, Pool, PooledConn};
-use crate::connection_pool_manager::ConnectionHolder;
 
 pub struct ContentTypeHeader;
 
@@ -95,7 +93,7 @@ impl<S, B> Service for AuthFilterMiddleware<S>
             })
         } else {
             let path = req.path();
-            if path.contains("iot/auth2/") {
+            if path.contains("iot/auth2/"){
                 let fut = self.service.call(req);
                 Box::pin(async move {
                     let res = fut.await?;
@@ -104,7 +102,7 @@ impl<S, B> Service for AuthFilterMiddleware<S>
             } else {
                 if req.headers().contains_key("Authorization") {
                     let authorization = req.headers().get("Authorization").unwrap();
-                    let mut auth_value = authorization.to_str().unwrap();
+                    let auth_value = authorization.to_str().unwrap();
                     let mut jwt = "";
                     for (index, v) in auth_value.char_indices() {
                         if index == 7 {
@@ -168,34 +166,34 @@ impl FromRequest for UserPrinciple {
     }
 }
 
-impl FromRequest for ConnectionHolder {
-    type Error = Error;
-    type Future = Ready<Result<Self, Self::Error>>;
-    type Config = ();
+// impl FromRequest for ConnectionHolder {
+//     type Error = Error;
+//     type Future = Ready<Result<Self, Self::Error>>;
+//     type Config = ();
 
-    fn from_request(req: &HttpRequest, payload: &mut Payload<PayloadStream>) -> Self::Future {
-        let pool = req.app_data::<web::Data<Pool>>();
-        match pool {
-            None => {
-                err(ErrorUnauthorized("no valid pool found"))
-            }
-            Some(p) => {
-                let pc = pool.unwrap().get_conn();
-                match pc {
-                    Ok(pcc) => {
-                        let mut conn = pcc.unwrap();
-                        ok(ConnectionHolder {
-                            conn
-                        })
-                    }
-                    Err(_) => {
-                        err(ErrorUnauthorized("no valid pooled connection found"))
-                    }
-                }
-            }
-        }
-    }
-}
+    // fn from_request(req: &HttpRequest, payload: &mut Payload<PayloadStream>) -> Self::Future {
+    //     let pool = req.app_data::<web::Data<Pool>>();
+    //     match pool {
+    //         None => {
+    //             err(ErrorUnauthorized("no valid pool found"))
+    //         }
+    //         Some(p) => {
+    //             let pc = p.get_conn();
+    //             match pc {
+    //                 Ok(pcc) => {
+    //                     let mut conn = pcc.unwrap();
+    //                     ok(ConnectionHolder {
+    //                         conn
+    //                     })
+    //                 }
+    //                 Err(e) => {
+    //                     err(ErrorUnauthorized("no valid pooled connection found"))
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+// }
 
 
 #[cfg(test)]
@@ -210,7 +208,6 @@ mod test {
     use chrono::{Duration, NaiveDateTime, Timelike, Utc};
     use env_logger::Env;
     use futures::task::SpawnExt;
-    use tokio::task;
 
     use crate::{echo_resource, filters, cors_filter};
     use crate::jwt_service::{issue, SessionType};

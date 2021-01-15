@@ -7,15 +7,10 @@ use chrono::{Utc, Duration};
 use std::ops::Add;
 use uuid::Uuid;
 use serde::Deserialize;
-use mysql::{Pool, Value};
-use mysql::prelude::{TextQuery, Queryable};
-use mysql::params::Params;
-use mysql::params;
-use mysql::prelude::*;
 use std::collections::HashMap;
 use crate::entities::UserEntity;
-use crate::connection_pool_manager::ConnectionHolder;
 use crate::user_service::UserService;
+use sqlx::{MySql, Pool};
 
 
 #[derive(Deserialize)]
@@ -33,9 +28,9 @@ pub async fn login_step_1(auth_service: web::Data<FacebookAuthenticationService>
 /// general echo resource
 #[get("/callback")]
 pub async fn login_step_2(
-    mut auth_service: web::Data<FacebookAuthenticationService>,
+    auth_service: web::Data<FacebookAuthenticationService>,
     query: web::Query<CallbackQuery>,
-    connection_holder: Option<ConnectionHolder>) -> Result<HttpResponse, HttpErrorCode> {
+    pool: web::Data<Pool<MySql>>) -> Result<HttpResponse, HttpErrorCode> {
     let state_option = jwt_service::verify(&query.state);
     match state_option {
         None => {
@@ -52,10 +47,11 @@ pub async fn login_step_2(
             Err(HttpErrorCode::UnAuthorized {message : ErrorResponse {message: "no user found".to_string(), error_code : "unauthorized".to_string()}})
         }
         Some(user) => {
-            let mut conn = connection_holder.unwrap().conn;
-            let mut service = UserService::new(&mut conn);
+            let conn = pool.get_ref();
+            let x = &mut conn.try_acquire().unwrap();
+            let mut service = UserService::new(pool.get_ref());
             let entity = UserEntity::from_external_account(&user);
-            service.create_one(entity);
+            service.create_one(entity).await;
             let mut claims = JwtClaims {
                 aud: None,
                 exp: Utc::now().add(Duration::days(1)).timestamp() as usize,

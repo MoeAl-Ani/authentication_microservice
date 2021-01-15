@@ -15,16 +15,19 @@ use super::filters::{ContentTypeHeader, MethodAllowed};
 use chrono::{Utc, Duration};
 use std::ops::Add;
 use uuid::Uuid;
-use mysql::Pool;
 use crate::user_service::UserService;
-use crate::connection_pool_manager::{ConnectionHolder};
+use sqlx::{MySqlPool, Pool, MySql, Connection, Acquire};
+use futures::TryFutureExt;
+use std::borrow::BorrowMut;
 
 
 #[get("/profile")]
-pub async fn profile(user: UserPrinciple, connection_holder: Option<ConnectionHolder>) -> impl Responder {
-    let mut conn = connection_holder.unwrap().conn;
-    let mut user_service = UserService::new(&mut conn);
-    user_service.fetch_by_email(&user.email.unwrap())
+pub async fn profile(user: UserPrinciple, pool: web::Data<MySqlPool>) -> impl Responder {
+    let pool_ref = pool.get_ref();
+    //let result = &mut pool.acquire().await.unwrap();
+    let mut user_service = UserService::new(pool_ref);
+    let option = user_service.fetch_by_email(&user.email.unwrap()).await;
+    option
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {

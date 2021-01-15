@@ -1,9 +1,9 @@
-use mysql::*;
-use mysql::prelude::*;
 use std::{fs, process};
 use serde::{Serialize, Deserialize};
 use serde_json;
 use log::error;
+use sqlx::{MySqlPool, MySql, Pool};
+use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
 
 #[derive(Debug)]
 pub struct PoolInstantiate;
@@ -18,7 +18,7 @@ struct PoolConfig {
 }
 
 impl PoolInstantiate {
-    pub fn init() -> Pool {
+    pub async fn init() -> MySqlPool {
         let config_json = fs::read_to_string("./mysql_configuration.json").unwrap_or_else(|err| {
             error!("error reading mysql config file : {}", err);
             process::exit(1);
@@ -29,28 +29,17 @@ impl PoolInstantiate {
             process::exit(1);
         });
 
+        let op = MySqlConnectOptions::new()
+            .username(config.username.as_str())
+            .password(config.password.as_str())
+            .host(config.address.as_str())
+            .port(config.port)
+            .database(config.database.as_str());
 
-        let opts = OptsBuilder::new()
-            .user(Some(config.username))
-            .pass(Some(config.password))
-            .ip_or_hostname(Some(config.address))
-            .tcp_port(config.port)
-            .db_name(Some(config.database))
-            .stmt_cache_size(0);
+        MySqlPoolOptions::new()
+            .max_connections(100)
+            .connect_with(op).await.unwrap()
 
-        Pool::new(opts).unwrap()
-    }
-}
-
-pub struct ConnectionHolder {
-    pub conn: Conn
-}
-
-impl ConnectionHolder {
-    pub fn new(conn: Conn) -> Self {
-        ConnectionHolder {
-            conn
-        }
     }
 }
 

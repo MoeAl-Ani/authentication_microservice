@@ -10,7 +10,7 @@ init:
 build:
 	cargo build --release
 redeploy:
-	docker-compose down || exit 1
+	docker-compose down --remove-orphans || exit 1
 	cargo build --release
 	docker-compose --compatibility up -d --build
 	docker-compose logs -f

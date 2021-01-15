@@ -3,7 +3,6 @@ use std::{fs, process};
 use serde::{Deserialize, Serialize};
 use actix_web::client::{Client, SendRequestError, ClientResponse, JsonPayloadError, Connector};
 use actix_web::web::Bytes;
-use tokio::{task};
 use actix_web::dev::Payload;
 use actix_web::error::PayloadError;
 use futures::future::TryFutureExt;
@@ -76,7 +75,7 @@ impl BaseOAuth20Service for FacebookAuthenticationService {
     /// fetch account details using access_token
     async fn get_account_details(&self, access_token: &String) -> Option<Self::ExternalAccount> {
         /// &access_token
-        let mut profile_url = &mut self.config.profile_url.clone();
+        let profile_url = &mut self.config.profile_url.clone();
         let access_suffix = format!("&access_token={}", access_token.as_str());
         profile_url.push_str(access_suffix.as_str());
         let response = reqwest::get(profile_url.parse::<Url>().unwrap()).await;

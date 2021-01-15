@@ -46,7 +46,7 @@ impl<S, B> Service for CorsFilterMiddleware<S>
         self.service.poll_ready(ctx)
     }
 
-    fn call(&mut self, mut req: Self::Request) -> Self::Future {
+    fn call(&mut self, req: Self::Request) -> Self::Future {
         /// check http verb is it options or not
         if req.method().as_str() == "OPTIONS" {
             Box::pin(async move {

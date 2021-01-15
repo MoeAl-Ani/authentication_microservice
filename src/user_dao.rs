@@ -1,51 +1,62 @@
 use crate::error_base::ErrorCode;
 use crate::entities::UserEntity;
-use mysql::{Pool, Value, Row, Conn, Error, TxOpts};
-use mysql::prelude::{TextQuery, Queryable};
-use mysql::params::Params;
-use mysql::params;
-use mysql::prelude::*;
 use uuid::Uuid;
+use sqlx::{MySql, Error, Row, Executor, Pool, MySqlPool};
+use sqlx::pool::PoolConnection;
+use sqlx::mysql::{MySqlRow, MySqlDone};
+use std::borrow::BorrowMut;
 
 pub struct UserDao<'a> {
-    conn: &'a mut Conn
+    conn: &'a MySqlPool
 }
 impl <'a> UserDao<'a> {
-    pub fn new(conn: &'a mut Conn) -> Self {
+    pub fn new(conn: &'a MySqlPool) -> Self {
         UserDao {
             conn
         }
     }
 
-    pub fn find_by_email(&mut self, email: &String) -> Option<UserEntity> {
-        let statement = self.conn.prep("SELECT * from user where user.email like :email").unwrap();
-        let mut row: Row = self.conn.exec_first(&statement, mysql::params! {
-        "email" => email
-    }).unwrap().unwrap();
-        let user_entity = Some(UserEntity {
-            id: row.take("id").unwrap(),
-            email: row.take("email").unwrap(),
-            first_name: row.take("first_name").unwrap_or_default(),
-            last_name: row.take("last_name").unwrap_or_default(),
-            phone_number: row.take("phone_number").unwrap(),
-            language_id: row.take("language_id").unwrap()
-        });
-        self.conn.close(statement);
-        println!("row = {:?}", user_entity);
-        user_entity
+    pub async fn find_by_email(&mut self, email: &String) -> Option<UserEntity> {
+        let row = sqlx::query("SELECT * from user where user.email like ?")
+            .bind(email)
+            .fetch_one(self.conn).await;
+
+        let mut f_name = None;
+        let mut l_name = None;
+        match row {
+            Ok(r) => {
+                if let Ok(first_name) = r.try_get("first_name") {
+                    f_name = Some(first_name);
+                }
+
+                if let Ok(last_name) = r.try_get("last_name") {
+                    l_name = Some(last_name);
+                }
+                let user_entity = Some(UserEntity {
+                    id: r.get_unchecked("id"),
+                    email: r.get("email"),
+                    first_name: f_name,
+                    last_name: l_name,
+                    phone_number: r.get("phone_number"),
+                    language_id: r.get_unchecked("language_id")
+                });
+                println!("row = {:?}", user_entity);
+                user_entity
+            }
+            Err(err) => {
+                None
+            }
+        }
     }
 
-    pub fn insert_one(&mut self, e: UserEntity) -> Option<UserEntity>{
-        let statement = self.conn.prep(r"INSERT INTO user(first_name, last_name, email, phone_number, language_id) VALUES(:first_name,:last_name,:email,:phone_number,:language_id)").unwrap();
-        let result: Option<Row> = self.conn.exec_first(&statement,
-                                          mysql::params! {
-                   "first_name" => &e.first_name,
-                   "last_name" => &e.last_name,
-                   "email" => &e.email,
-                   "phone_number" => &e.phone_number,
-                   "language_id" => e.language_id
-                }).unwrap();
-        let affect_rows = self.conn.affected_rows();
+    pub async fn insert_one(&mut self, e: UserEntity) -> Option<UserEntity> {
+        let done: Result<MySqlDone, Error> = sqlx::query("INSERT INTO user(first_name, last_name, email, phone_number, language_id) VALUES(?,?,?,?,?)")
+            .bind(&e.first_name)
+            .bind(&e.last_name)
+            .bind(&e.email)
+            .bind(&e.phone_number)
+            .bind(e.language_id).execute(self.conn).await;
+        /*let affect_rows = self.conn.affected_rows();
 
         match affect_rows {
             1 => {
@@ -55,7 +66,8 @@ impl <'a> UserDao<'a> {
             _ => {
                 None
             }
-        }
+        }*/
+        None
     }
 }
 

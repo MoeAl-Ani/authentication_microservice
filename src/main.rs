@@ -11,7 +11,6 @@ use futures::future::{ok, Ready};
 use log::{debug, error, info, Level, log_enabled};
 use rand::prelude::*;
 use serde::export::Formatter;
-use tokio::macros::support::Future;
 
 use crate::filters::{ContentTypeHeader, MethodAllowed};
 use crate::jwt_service::SessionType;
@@ -43,7 +42,7 @@ async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "debug");
     std::env::set_var("RUST_BACKTRACE", "1");
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
-    let pool = web::Data::new(PoolInstantiate::init());
+    let pool = PoolInstantiate::init().await;
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
@@ -54,7 +53,7 @@ async fn main() -> std::io::Result<()> {
                 ok(format!("Thread-{}", x))
             })
             .app_data(counter.clone())
-            .app_data(pool.clone())
+            .data(pool.clone())
             .data(FacebookAuthenticationService::new())
             .configure(echo_resource::config)
             .configure(facebook_resource::config)

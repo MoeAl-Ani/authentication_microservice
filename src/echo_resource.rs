@@ -12,14 +12,10 @@ use crate::jwt_service::SessionType;
 
 use super::error_base::{ErrorResponse, HttpErrorCode};
 use super::filters::{ContentTypeHeader, MethodAllowed};
-use crate::connection_pool_manager::ConnectionHolder;
-use mysql::{Pool, Value, Row, Conn, Error as MysqlError, TxOpts};
-use mysql::prelude::{TextQuery, Queryable};
-use mysql::params::Params;
-use mysql::params;
-use mysql::prelude::*;
 use uuid::Uuid;
 use crate::entities::UserEntity;
+use sqlx::{Pool, MySql, MySqlPool, Executor};
+use sqlx::mysql::MySqlDone;
 
 pub struct AppStateWithCounter {
     pub counter: Mutex<i32>,
@@ -94,11 +90,11 @@ async fn error() -> Result<String, HttpErrorCode> {
 }
 
 #[post("/write_user")]
-pub async fn mock(user: UserPrinciple, connection_holder: Option<ConnectionHolder>) -> impl Responder {
-    let mut conn = connection_holder.unwrap().conn;
-    let statement = conn.prep(r"INSERT INTO user(first_name, last_name, email, phone_number, language_id) VALUES(:first_name,:last_name,:email,:phone_number,:language_id)").unwrap();
-    let mut tx = conn.start_transaction(TxOpts::default()).unwrap();
-    let mut e = UserEntity {
+pub async fn mock(user: UserPrinciple, pool: web::Data<MySqlPool>) -> impl Responder {
+    // let mut conn = pool.get_conn().unwrap().unwrap();
+    // let statement = conn.prep(r"INSERT INTO user(first_name, last_name, email, phone_number, language_id) VALUES(:first_name,:last_name,:email,:phone_number,:language_id)").unwrap();
+    // let mut tx = conn.start_transaction(TxOpts::default()).unwrap();
+    let e = UserEntity {
         email: format!("mock@{}", Uuid::new_v4().to_string().get(0..10).unwrap()),
         phone_number: "0403231145".to_string(),
         language_id: 1,
@@ -106,34 +102,13 @@ pub async fn mock(user: UserPrinciple, connection_holder: Option<ConnectionHolde
         last_name: None,
         id: None
     };
-    let result: Result<Option<Row>, MysqlError> = tx.exec_first(&statement,
-                                                           mysql::params! {
-                   "first_name" => &e.first_name,
-                   "last_name" => &e.last_name,
-                   "email" => &e.email,
-                   "phone_number" => &e.phone_number,
-                   "language_id" => e.language_id
-                });
-    match result {
-        Ok(_) => {
-            let affect_rows =tx.affected_rows();
-
-            match affect_rows {
-                1 => {
-                    tx.commit();
-                    conn.close(statement);
-                    Some(e)
-                }
-                _ => {
-                    tx.rollback();
-                    None
-                }
-            }
-        }
-        Err(_) => {
-            None
-        }
-    }
+    let done: Result<MySqlDone, sqlx::Error> = sqlx::query("INSERT INTO user(first_name, last_name, email, phone_number, language_id) VALUES(?,?,?,?,?)")
+        .bind(&e.first_name)
+        .bind(&e.last_name)
+        .bind(&e.email)
+        .bind(&e.phone_number)
+        .bind(e.language_id).execute(pool.get_ref()).await;
+    Some(e)
 }
 
 
