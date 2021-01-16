@@ -40,7 +40,6 @@ impl <'a> UserDao<'a> {
                     phone_number: r.get("phone_number"),
                     language_id: r.get_unchecked("language_id")
                 });
-                println!("row = {:?}", user_entity);
                 user_entity
             }
             Err(err) => {
