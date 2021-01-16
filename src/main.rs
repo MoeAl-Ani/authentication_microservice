@@ -12,23 +12,21 @@ use log::{debug, error, info, Level, log_enabled};
 use rand::prelude::*;
 use serde::export::Formatter;
 
-use crate::filters::{ContentTypeHeader, MethodAllowed};
-use crate::jwt_service::SessionType;
-use crate::oauth::FacebookAuthenticationService;
-use crate::connection_pool_manager::{PoolInstantiate};
+use db::connection_pool_manager::PoolInstantiate;
+use filters::{authentication_filter, cors_filter};
+use filters::authentication_filter::{ContentTypeHeader, MethodAllowed};
+use ouath::oauth::FacebookAuthenticationService;
+use restful::{echo_resource, facebook_resource, user_resource};
+use services::jwt_service::SessionType;
 
-mod echo_resource;
-mod error_base;
-mod filters;
-mod jwt_service;
-mod cors_filter;
-mod user_dao;
-mod oauth;
-mod facebook_resource;
-mod connection_pool_manager;
-mod user_resource;
-mod user_service;
+mod daos;
 mod entities;
+mod restful;
+mod filters;
+mod db;
+mod services;
+mod exceptions;
+mod ouath;
 
 #[derive(Debug, Clone)]
 pub struct UserPrinciple {
@@ -46,7 +44,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
-            .wrap(filters::AuthFilter)
+            .wrap(authentication_filter::AuthFilter)
             .wrap(cors_filter::CorsFilter)
             .data_factory(|| -> Ready<Result<String, Error>>{
                 let x: u8 = random();

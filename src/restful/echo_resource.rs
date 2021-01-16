@@ -8,14 +8,14 @@ use log::debug;
 use serde::{Deserialize, Serialize};
 
 use crate::{main, UserPrinciple};
-use crate::jwt_service::SessionType;
+use crate::services::jwt_service::SessionType;
 
-use super::error_base::{ErrorResponse, HttpErrorCode};
-use super::filters::{ContentTypeHeader, MethodAllowed};
+use crate::exceptions::error_base::{ErrorResponse, HttpErrorCode};
+use crate::filters::authentication_filter::{ContentTypeHeader, MethodAllowed};
 use uuid::Uuid;
-use crate::entities::UserEntity;
 use sqlx::{Pool, MySql, MySqlPool, Executor};
 use sqlx::mysql::MySqlDone;
+use crate::entities::user_entity::UserEntity;
 
 pub struct AppStateWithCounter {
     pub counter: Mutex<i32>,
@@ -127,7 +127,7 @@ mod tests {
     use actix_web::{App, test, web};
     use actix_web::http::StatusCode;
 
-    use crate::echo_resource;
+    use crate::restful::echo_resource;
 
     use super::*;
 

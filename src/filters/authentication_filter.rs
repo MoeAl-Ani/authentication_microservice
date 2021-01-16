@@ -17,7 +17,7 @@ use futures::{Future, FutureExt, Stream, TryFutureExt, TryStreamExt};
 use futures::future::{Either, err, ok, Ready};
 use log::debug;
 
-use crate::jwt_service::{JwtClaims, SessionType, verify};
+use crate::services::jwt_service::{JwtClaims, SessionType, verify};
 use crate::UserPrinciple;
 
 pub struct ContentTypeHeader;
@@ -209,8 +209,9 @@ mod test {
     use env_logger::Env;
     use futures::task::SpawnExt;
 
-    use crate::{echo_resource, filters, cors_filter};
-    use crate::jwt_service::{issue, SessionType};
+    use crate::filter::{cors_filter, authentication_filter};
+    use crate::services::jwt_service::{issue, SessionType};
+    use crate::restful::echo_resource;
 
     use super::*;
 
@@ -221,7 +222,7 @@ mod test {
         env_logger::try_init();
 
         let c = web::Data::new(echo_resource::AppStateWithCounter::new());
-        let mut app = test::init_service(App::new().wrap(filters::AuthFilter)
+        let mut app = test::init_service(App::new().wrap(authentication_filter::AuthFilter)
             .app_data(c.clone())
             .configure(echo_resource::config)).await;
         let req = test::TestRequest::with_header("content-type", "application/json").uri("/echo/counter").to_request();
@@ -260,7 +261,7 @@ mod test {
 
         let c = web::Data::new(echo_resource::AppStateWithCounter::new());
         let mut app = test::init_service(App::new()
-            .wrap(filters::AuthFilter)
+            .wrap(authentication_filter::AuthFilter)
             .wrap(cors_filter::CorsFilter)
             .app_data(c.clone())
             .configure(echo_resource::config)).await;

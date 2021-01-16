@@ -1,8 +1,8 @@
-use crate::entities::UserEntity;
-use crate::user_dao;
-use crate::user_dao::UserDao;
+use crate::daos::user_dao;
+use crate::daos::user_dao::UserDao;
 use sqlx::{MySql, Pool, MySqlPool};
 use sqlx::pool::PoolConnection;
+use crate::entities::user_entity::UserEntity;
 
 pub struct UserService<'a> {
     user_dao: UserDao<'a>

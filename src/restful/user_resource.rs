@@ -1,25 +1,25 @@
+use std::borrow::BorrowMut;
+use std::ops::Add;
 use std::sync::{Mutex, RwLock};
 
 use actix_web::{App, Error, get, guard, HttpRequest, HttpResponse, HttpServer, post, Responder, web};
 use actix_web::body::Body;
 use actix_web::web::Data;
+use chrono::{Duration, Utc};
 use futures::future::{ready, Ready};
+use futures::TryFutureExt;
 use log::debug;
 use serde::{Deserialize, Serialize};
-
-use crate::{main, UserPrinciple, user_dao};
-use crate::jwt_service::SessionType;
-
-use super::error_base::{ErrorResponse, HttpErrorCode};
-use super::filters::{ContentTypeHeader, MethodAllowed};
-use chrono::{Utc, Duration};
-use std::ops::Add;
+use sqlx::{Acquire, Connection, MySql, MySqlPool, Pool};
 use uuid::Uuid;
-use crate::user_service::UserService;
-use sqlx::{MySqlPool, Pool, MySql, Connection, Acquire};
-use futures::TryFutureExt;
-use std::borrow::BorrowMut;
 
+use crate::{main, UserPrinciple};
+use crate::daos::user_dao;
+use crate::services::jwt_service::SessionType;
+use crate::services::user_service::UserService;
+
+use crate::exceptions::error_base::{ErrorResponse, HttpErrorCode};
+use crate::filters::authentication_filter::{ContentTypeHeader, MethodAllowed};
 
 #[get("/profile")]
 pub async fn profile(user: UserPrinciple, pool: web::Data<MySqlPool>) -> impl Responder {

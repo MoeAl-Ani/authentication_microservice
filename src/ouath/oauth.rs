@@ -13,7 +13,7 @@ use reqwest::{Url, Response, Error};
 use openssl::ssl::{SslConnector, SslMethod};
 use async_trait::async_trait;
 use log::error;
-use crate::jwt_service::{JwtClaims, SessionType, issue};
+use crate::services::jwt_service::{JwtClaims, SessionType, issue};
 use chrono::{Utc, Duration};
 use std::ops::Add;
 

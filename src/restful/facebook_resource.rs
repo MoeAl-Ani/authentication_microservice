@@ -1,16 +1,16 @@
 use actix_web::{HttpResponse, Responder, get, web, Error};
-use crate::oauth::{FacebookAuthenticationService, BaseOAuth20Service, ExternalAccount};
-use crate::error_base::{HttpErrorCode, ErrorResponse};
-use crate::jwt_service::{JwtClaims, SessionType};
-use crate::jwt_service;
+use crate::ouath::oauth::{FacebookAuthenticationService, BaseOAuth20Service, ExternalAccount};
+use crate::exceptions::error_base::{HttpErrorCode, ErrorResponse};
+use crate::services::jwt_service::{JwtClaims, SessionType};
+use crate::services::jwt_service;
 use chrono::{Utc, Duration};
 use std::ops::Add;
 use uuid::Uuid;
 use serde::Deserialize;
 use std::collections::HashMap;
-use crate::entities::UserEntity;
-use crate::user_service::UserService;
+use crate::services::user_service::UserService;
 use sqlx::{MySql, Pool};
+use crate::entities::user_entity::UserEntity;
 
 
 #[derive(Deserialize)]

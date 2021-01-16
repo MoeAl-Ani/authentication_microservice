@@ -1,4 +1,4 @@
-use crate::oauth::ExternalAccount;
+use crate::ouath::oauth::ExternalAccount;
 use serde::{Serialize, Deserialize};
 use actix_web::{Responder, HttpRequest, Error, HttpResponse};
 use actix_web::body::Body;

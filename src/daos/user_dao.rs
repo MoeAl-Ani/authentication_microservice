@@ -1,10 +1,10 @@
-use crate::error_base::ErrorCode;
-use crate::entities::UserEntity;
+
 use uuid::Uuid;
 use sqlx::{MySql, Error, Row, Executor, Pool, MySqlPool};
 use sqlx::pool::PoolConnection;
 use sqlx::mysql::{MySqlRow, MySqlDone};
 use std::borrow::BorrowMut;
+use crate::entities::user_entity::UserEntity;
 
 pub struct UserDao<'a> {
     conn: &'a MySqlPool
