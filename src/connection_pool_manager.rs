@@ -1,9 +1,10 @@
 use std::{fs, process};
 use serde::{Serialize, Deserialize};
 use serde_json;
-use log::error;
-use sqlx::{MySqlPool, MySql, Pool};
+use log::{error, LevelFilter};
+use sqlx::{MySqlPool, MySql, Pool, ConnectOptions};
 use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
+use std::time::Duration;
 
 #[derive(Debug)]
 pub struct PoolInstantiate;
@@ -29,12 +30,15 @@ impl PoolInstantiate {
             process::exit(1);
         });
 
-        let op = MySqlConnectOptions::new()
+        let mut op = MySqlConnectOptions::new()
             .username(config.username.as_str())
             .password(config.password.as_str())
             .host(config.address.as_str())
             .port(config.port)
             .database(config.database.as_str());
+
+        op.log_slow_statements(LevelFilter::Debug, Duration::new(10,0));
+        op.log_statements(LevelFilter::Off);
 
         MySqlPoolOptions::new()
             .max_connections(100)

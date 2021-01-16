@@ -139,7 +139,6 @@ impl FacebookConfiguration {
             eprintln!("error deserializing file content {}", err);
             process::exit(1);
         });
-        println!("config {:?}", fb_config);
         fb_config
     }
 }
