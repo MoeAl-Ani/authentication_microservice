@@ -516,9 +516,11 @@ dependencies = [
  "futures",
  "jsonwebtoken",
  "log",
+ "num-bigint 0.3.1",
  "openssl",
  "rand 0.8.1",
  "reqwest",
+ "rust_srp",
  "serde",
  "serde_json",
  "sqlx",
@@ -1682,6 +1684,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "num"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b7a8e9be5e039e2ff869df49155f1c06bd01ade2117ec783e56ab0932b67a8f"
+dependencies = [
+ "num-bigint 0.3.1",
+ "num-complex",
+ "num-integer",
+ "num-iter",
+ "num-rational",
+ "num-traits",
+]
+
+[[package]]
 name = "num-bigint"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1701,6 +1717,8 @@ dependencies = [
  "autocfg 1.0.1",
  "num-integer",
  "num-traits",
+ "rand 0.7.3",
+ "serde",
 ]
 
 [[package]]
@@ -1723,6 +1741,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-complex"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "747d632c0c558b87dbabbe6a82f3b4ae03720d0646ac5b7b4dae89394be5f2c5"
+dependencies = [
+ "num-traits",
+ "rand 0.7.3",
+ "serde",
+]
+
+[[package]]
 name = "num-integer"
 version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1741,6 +1770,19 @@ dependencies = [
  "autocfg 1.0.1",
  "num-integer",
  "num-traits",
+]
+
+[[package]]
+name = "num-rational"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12ac428b1cb17fce6f731001d307d351ec70a6d202fc2e60f7d4c5e42d8f4f07"
+dependencies = [
+ "autocfg 1.0.1",
+ "num-bigint 0.3.1",
+ "num-integer",
+ "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -2199,6 +2241,19 @@ dependencies = [
  "subtle",
  "thiserror",
  "zeroize",
+]
+
+[[package]]
+name = "rust_srp"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f35c52bc896a8d0e87bffe297f905bddfa822d8852f0ef33eed9e8880a80e170"
+dependencies = [
+ "hex",
+ "num",
+ "num-bigint 0.3.1",
+ "rand 0.7.3",
+ "sha2",
 ]
 
 [[package]]

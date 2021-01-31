@@ -18,6 +18,9 @@ use filters::authentication_filter::{ContentTypeHeader, MethodAllowed};
 use ouath::oauth::FacebookAuthenticationService;
 use restful::{echo_resource, facebook_resource, user_resource};
 use services::jwt_service::SessionType;
+use std::iter::Map;
+use rust_srp::SrpServer;
+use crate::restful::srp_resource;
 
 mod daos;
 mod entities;
@@ -36,6 +39,8 @@ pub struct UserPrinciple {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let srp_session_management:HashMap<String, SrpServer> = HashMap::new();
+    let srp_session_management = web::Data::new(Mutex::new(srp_session_management));
     let counter = web::Data::new(echo_resource::AppStateWithCounter::new());
     std::env::set_var("RUST_LOG", "debug");
     std::env::set_var("RUST_BACKTRACE", "1");
@@ -50,12 +55,14 @@ async fn main() -> std::io::Result<()> {
                 let x: u8 = random();
                 ok(format!("Thread-{}", x))
             })
+            .app_data(srp_session_management.clone())
             .app_data(counter.clone())
             .data(pool.clone())
             .data(FacebookAuthenticationService::new())
             .configure(echo_resource::config)
             .configure(facebook_resource::config)
             .configure(user_resource::config)
+            .configure(srp_resource::config)
     })
         .bind("0.0.0.0:8080")?
         .run()

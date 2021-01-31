@@ -38,11 +38,14 @@ impl <'a> UserDao<'a> {
                     first_name: f_name,
                     last_name: l_name,
                     phone_number: r.get("phone_number"),
-                    language_id: r.get_unchecked("language_id")
+                    language_id: r.get_unchecked("language_id"),
+                    salt: r.get("salt"),
+                    verifier: r.get("verifier")
                 });
                 user_entity
             }
             Err(err) => {
+                println!("{:?}", err);
                 None
             }
         }

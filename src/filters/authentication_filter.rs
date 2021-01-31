@@ -93,7 +93,7 @@ impl<S, B> Service for AuthFilterMiddleware<S>
             })
         } else {
             let path = req.path();
-            if path.contains("iot/auth2/"){
+            if path.contains("iot/auth2/") || path.contains("srp"){
                 let fut = self.service.call(req);
                 Box::pin(async move {
                     let res = fut.await?;
@@ -209,11 +209,11 @@ mod test {
     use env_logger::Env;
     use futures::task::SpawnExt;
 
-    use crate::filter::{cors_filter, authentication_filter};
     use crate::services::jwt_service::{issue, SessionType};
     use crate::restful::echo_resource;
 
     use super::*;
+    use crate::filters::{authentication_filter, cors_filter};
 
     #[actix_rt::test]
     async fn test_authorization_header_not_exist() {

@@ -100,7 +100,9 @@ pub async fn mock(user: UserPrinciple, pool: web::Data<MySqlPool>) -> impl Respo
         language_id: 1,
         first_name: None,
         last_name: None,
-        id: None
+        id: None,
+        salt: None,
+        verifier: None
     };
     let done: Result<MySqlDone, sqlx::Error> = sqlx::query("INSERT INTO user(first_name, last_name, email, phone_number, language_id) VALUES(?,?,?,?,?)")
         .bind(&e.first_name)
@@ -146,11 +148,7 @@ mod tests {
         let mut app = test::init_service(App::new().app_data(c.clone()).configure(echo_resource::config)).await;
         let req = test::TestRequest::with_uri("/echo/counter").to_request();
         let resp = test::call_service(&mut app, req).await;
-        assert!(!resp.status().is_success());
-        assert_eq!(StatusCode::NOT_FOUND, resp.status());
-
-        let req = test::TestRequest::with_header("content-type", "application/json").uri("/echo/counter").to_request();
-        let resp = test::call_service(&mut app, req).await;
         assert!(resp.status().is_success());
+        assert_eq!(StatusCode::OK, resp.status());
     }
 }

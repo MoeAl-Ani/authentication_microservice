@@ -25,6 +25,8 @@ uuid = { version = "0.8", features = ["serde", "v4"] }
 async-trait = { version = "0.1.42"}
 reqwest = { version = "0.10" }
 openssl = { version="0.10.32", features = ["vendored"] }
+rust_srp = "0.1.5"
+num-bigint = "0.3.1"
 
 #mysql pool
 sqlx = { version = "0.4.2", features = [ "mysql", "runtime-async-std-rustls" ] }

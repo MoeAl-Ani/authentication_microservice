@@ -2,7 +2,7 @@ SHELL := /bin/bash
 init:
 	docker-compose -f docker-compose.init.yaml up -d || exit 1
 	echo "Waiting for 20 seconds"
-	sleep 20
+	sleep 5
 	echo "executing sql file to mysql"
 	docker exec -i mysql /usr/bin/mysql < misc/schema/iot.sql && echo "Database structure built"
 	echo "Docker bootstrap complete"

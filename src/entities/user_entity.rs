@@ -11,7 +11,9 @@ pub struct UserEntity {
     pub last_name: Option<String>,
     pub email: String,
     pub phone_number: String,
-    pub language_id: i32
+    pub language_id: i32,
+    pub salt: Option<String>,
+    pub verifier: Option<String>
 }
 
 impl UserEntity {
@@ -22,7 +24,9 @@ impl UserEntity {
             email: external_account.email.clone(),
             phone_number: "0403231145".to_string(),
             id: None,
-            language_id: 1
+            language_id: 1,
+            salt: None,
+            verifier: None
         }
     }
 }

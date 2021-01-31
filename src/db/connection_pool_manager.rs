@@ -50,11 +50,5 @@ impl PoolInstantiate {
 #[cfg(test)]
 mod test {
     use super::*;
-
-    #[test]
-    fn test_pool_created() {
-        let pool = PoolInstantiate::init();
-        let result = pool.get_conn().unwrap().unwrap();
-        println!("{:?}", result);
-    }
+    use futures::task::Poll;
 }
