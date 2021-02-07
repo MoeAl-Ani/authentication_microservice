@@ -2245,9 +2245,9 @@ dependencies = [
 
 [[package]]
 name = "rust_srp"
-version = "0.1.5"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f35c52bc896a8d0e87bffe297f905bddfa822d8852f0ef33eed9e8880a80e170"
+checksum = "8fa36d10c812c8fa8c5ee51543781d4675b2230b0b35be38be7cc2b7315d8536"
 dependencies = [
  "hex",
  "num",
